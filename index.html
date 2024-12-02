@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juggle the Ball</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #222;
+      font-family: 'Arial', sans-serif;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    /* Title Screen */
+    #titleScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      z-index: 10;
+    }
+
+    h1 {
+      font-size: 4rem;
+      margin-bottom: 30px;
+      color: #FF6A13;
+      text-shadow: 3px 3px 15px rgba(255, 255, 255, 0.3);
+    }
+
+    button {
+      margin: 15px;
+      padding: 15px 30px;
+      font-size: 1.5rem;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      background-color: #FF6A13;
+      color: white;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #FF5500;
+      transform: scale(1.1);
+    }
+
+    /* Game Over Screen */
+    #gameOverScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      z-index: 10;
+    }
+
+    /* Canvas for the Game */
+    #gameCanvas {
+      display: none;
+      border: 4px solid #FF6A13;
+      background-color: #2d2d2d;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+      border-radius: 10px;
+    }
+
+    /* Wasted image */
+    #wastedImage {
+      width: 300px;
+      display: none;
+      position: absolute;
+      top: 50px;
+      z-index: 15;
+      opacity: 0;
+      transition: opacity 1.5s ease-out;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Title Screen -->
+  <div id="titleScreen">
+    <h1>Ball Juggling Scenarios</h1>
+    <button id="startButton">Start jugglin' BALLS?</button>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="gameOverScreen">
+    <img id="wastedImage" src="wasted.png" alt="Wasted">
+  </div>
+
+  <!-- Game Canvas -->
+  <canvas id="gameCanvas" width="500" height="500"></canvas>
+
+  <script>
+    // HTML Elements
+    const titleScreen = document.getElementById("titleScreen");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const startButton = document.getElementById("startButton");
+    const wastedImage = document.getElementById("wastedImage");
+
+    // Game variables
+    let score = 0;
+    let paddleWidth = 100;
+    let paddleX = (canvas.width - paddleWidth) / 2;
+    const paddleHeight = 20;
+    const paddleSpeed = 7;
+    let ball = {}; // Single ball object
+    let rightPressed = false;
+    let leftPressed = false;
+
+    // Game state
+    let gameActive = false;
+    let animationId;
+
+    // Create the ball with random direction and physics adjustments
+    function createBall() {
+      const randomAngle = Math.random() * 2 * Math.PI;
+      ball = {
+        x: Math.random() * canvas.width,
+        y: 50, // Start ball slightly below top
+        vx: 5 * Math.cos(randomAngle), // Ball horizontal speed in random direction
+        vy: 5 * Math.sin(randomAngle), // Ball vertical speed in random direction
+        radius: 15,
+        bounce: -1, // Perfect bounce (no energy loss)
+        friction: 0.99 // Friction applied but ball keeps high speed
+      };
+    }
+
+    // Event listeners for keyboard controls
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "d" || e.key === "D") rightPressed = true;
+      if (e.key === "a" || e.key === "A") leftPressed = true;
+    });
+    document.addEventListener("keyup", (e) => {
+      if (e.key === "d" || e.key === "D") rightPressed = false;
+      if (e.key === "a" || e.key === "A") leftPressed = false;
+    });
+
+    // Start the game when the button is clicked
+    startButton.addEventListener("click", startGame);
+
+    // Start the game
+    function startGame() {
+      gameActive = true;
+      titleScreen.style.display = "none";
+      gameOverScreen.style.display = "none";
+      canvas.style.display = "block";
+
+      score = 0;
+      paddleWidth = 100;
+      paddleX = (canvas.width - paddleWidth) / 2;
+      createBall(); // Create the first ball
+
+      gameLoop();
+    }
+
+    // Restart the game
+    function restartGame() {
+      gameOverScreen.style.display = "none";
+      startGame();
+    }
+
+    // Go back to the title screen
+    function goToTitle() {
+      gameActive = false;
+      gameOverScreen.style.display = "none";
+      titleScreen.style.display = "block";
+      canvas.style.display = "none";
+    }
+
+    // Game loop
+    function gameLoop() {
+      if (gameActive) {
+        animationId = requestAnimationFrame(gameLoop);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw paddle
+        ctx.fillStyle = "#FF6A13";
+        ctx.fillRect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+
+        // Update ball position and physics (constant speed, no gravity)
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        // Bounce the ball off the walls
+        if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+          ball.vx = -ball.vx; // Reverse horizontal direction
+        }
+
+        if (ball.y - ball.radius < 0) {
+          ball.vy = -ball.vy; // Reverse vertical direction
+        }
+
+        // Check if the ball hits the paddle
+        if (ball.y + ball.radius > canvas.height - paddleHeight && 
+            ball.x > paddleX && ball.x < paddleX + paddleWidth) {
+          ball.vy = ball.bounce * Math.abs(ball.vy); // Bounce off the paddle
+          score++; // Increase score
+        }
+
+        // If the ball hits the bottom, the player dies
+        if (ball.y + ball.radius > canvas.height) {
+          gameActive = false;
+          displayGameOver();
+        }
+
+        // Draw ball
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#FF6A13";
+        ctx.fill();
+        ctx.closePath();
+
+        // Draw score
+        ctx.font = "20px Arial";
+        ctx.fillText("Score: " + score, 20, 30);
+
+        // Move the paddle
+        if (rightPressed && paddleX < canvas.width - paddleWidth) {
+          paddleX += paddleSpeed;
+        } else if (leftPressed && paddleX > 0) {
+          paddleX -= paddleSpeed;
+        }
+      }
+    }
+
+    // Display the game over screen with wasted animation
+    function displayGameOver() {
+      gameOverScreen.style.display = "flex";
+      wastedImage.style.display = "block";
+      wastedImage.style.opacity = 1; // Fade in quickly
+      setTimeout(() => {
+        wastedImage.style.opacity = 0; // Fade out slowly
+      }, 500); // Fade out after 0.5 seconds
+      setTimeout(goToTitle, 2000); // Go back to title screen after 2 seconds
+    }
+  </script>
+</body>
+</html>
+Made By Chinmay Singh Butola
